@@ -23,262 +23,401 @@
         @media (max-width: 767px) {
             .main-container { height: calc(100vh - 80px); }
         }
-    
-
-        /* === FALLBACK CSS UNTUK GITHUB PAGES / HP ===
-           Dipakai kalau Tailwind CDN gagal load. Tidak mengubah logic MQTT. */
-        :root {
-            --bg: #111827;
-            --panel: #1f2937;
-            --panel2: #111827;
-            --border: #374151;
-            --text: #f9fafb;
-            --muted: #9ca3af;
-            --blue: #2563eb;
-            --blue2: #3b82f6;
-            --green: #22c55e;
-        }
-
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
-        body { display: flex; overflow: hidden; }
-
-        aside { width: 288px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; height: 100vh; flex-shrink: 0; }
-        aside h1 { font-size: 24px; margin: 0; padding: 32px; border-bottom: 1px solid var(--border); }
-        aside nav { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-        aside button { width: 100%; border: 0; border-radius: 14px; padding: 16px 20px; background: transparent; color: var(--muted); font-weight: 700; text-align: left; cursor: pointer; }
-        aside button.active, aside button:hover { background: var(--blue); color: white; }
-
-        main { flex: 1; height: 100vh; overflow: hidden; background: var(--bg); }
-        main > div:first-child { display: none; }
-        main > div:last-child { height: 100%; overflow-y: auto; padding: 40px; padding-bottom: 120px; }
-
-        .tab-content { display: none; width: 100%; min-height: 100%; flex-direction: column; gap: 32px; }
-        .tab-content.active { display: flex; }
-
-        h2 { margin: 0; font-size: 34px; line-height: 1.2; color: white; font-weight: 800; }
-        h3 { margin-top: 0; }
-
-        section > div { gap: 32px; }
-        #tab-live > div:nth-of-type(1),
-        #tab-kontrol > div:nth-of-type(1),
-        #tab-referensi > div:nth-of-type(1) {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 32px;
-        }
-        #tab-live > div:nth-of-type(1) { grid-template-columns: 1fr 2fr; }
-
-        #tab-live .bg-gray-800,
-        #tab-kontrol .bg-gray-800,
-        #tab-referensi .bg-gray-800,
-        #tab-history .bg-gray-800 {
-            background: var(--panel) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: 28px !important;
-            box-shadow: 0 12px 30px rgba(0,0,0,.18);
-        }
-
-        .bg-gray-900, .bg-gray-900\/80, .bg-gray-900\/50 {
-            background: var(--panel2) !important;
-            border-color: var(--border) !important;
-        }
-
-        button { cursor: pointer; color: var(--text); }
-        input, select {
-            width: 100%;
-            background: var(--panel2);
-            color: white;
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 18px;
-            font-size: 18px;
-            outline: none;
-        }
-        input:focus, select:focus { border-color: var(--blue2); box-shadow: 0 0 0 2px var(--blue2); }
-
-        table { border-collapse: collapse; width: 100%; }
-        th, td { padding: 18px; border-bottom: 1px solid var(--border); }
-        th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
-        td { color: var(--text); font-size: 14px; }
-        .overflow-x-auto { overflow-x: auto; }
-
-        #lingkaranPersen { color: var(--blue2); }
-        #persenPakan { color: white; font-weight: 900; }
-
-        nav.fixed {
-            display: none;
-        }
-
-        @media (max-width: 767px) {
-            html, body { height: 100%; overflow: hidden; }
-            body { display: block; background: var(--bg); }
-
-            aside { display: none !important; }
-
-            main { height: 100vh; overflow: hidden; background: var(--bg); }
-            main > div:first-child {
-                display: flex !important;
-                height: 64px;
-                align-items: center;
-                justify-content: space-between;
-                padding: 0 20px;
-                background: var(--panel);
-                border-bottom: 1px solid var(--border);
-                position: sticky;
-                top: 0;
-                z-index: 30;
-            }
-
-            main > div:last-child {
-                height: calc(100vh - 64px);
-                overflow-y: auto;
-                padding: 24px 16px 120px 16px !important;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .tab-content { gap: 28px; min-height: auto; padding-bottom: 24px; }
-            h2 { font-size: 30px !important; line-height: 1.2; margin-bottom: 20px; }
-
-            #tab-live > div:nth-of-type(1),
-            #tab-kontrol > div:nth-of-type(1),
-            #tab-referensi > div:nth-of-type(1) {
-                display: grid !important;
-                grid-template-columns: 1fr !important;
-                gap: 24px !important;
-            }
-
-            #tab-live .bg-gray-800,
-            #tab-kontrol .bg-gray-800,
-            #tab-referensi .bg-gray-800,
-            #tab-history .bg-gray-800 {
-                background: var(--panel) !important;
-                border: 1px solid var(--border) !important;
-                border-radius: 24px !important;
-                padding: 28px 22px !important;
-                overflow: hidden;
-            }
-
-            #tab-live .lg\:col-span-2 { display: flex; flex-direction: column; gap: 24px; }
-            #tab-live .grid.grid-cols-2,
-            #tab-kontrol .grid.grid-cols-2 {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 16px !important;
-            }
-
-            h3, label, p.text-\[10px\], .text-\[10px\] {
-                color: var(--muted) !important;
-                letter-spacing: .08em;
-            }
-
-            input, select {
-                font-size: 18px !important;
-                padding: 18px !important;
-                background: var(--panel2) !important;
-                color: white !important;
-                border: 1px solid var(--border) !important;
-                border-radius: 16px !important;
-            }
-
-            #tab-kontrol button {
-                color: white !important;
-                background: var(--panel2) !important;
-                border: 1px solid var(--border) !important;
-                border-radius: 16px !important;
-            }
-            #tab-kontrol button:last-child,
-            button[onclick="kirimPakan('custom')"] {
-                background: var(--blue) !important;
-                color: white !important;
-                border: 0 !important;
-            }
-
-            nav.fixed {
-                display: flex !important;
-                position: fixed;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                height: 76px;
-                background: var(--panel);
-                border-top: 1px solid var(--border);
-                z-index: 50;
-                align-items: center;
-                justify-content: space-around;
-                padding: 8px 10px;
-            }
-            nav.fixed button {
-                background: transparent !important;
-                border: 0 !important;
-                color: var(--muted) !important;
-                font-size: 12px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 4px;
-            }
-
-            canvas { max-width: 100%; }
-        }
 
 
-        /* === FIX FINAL: SCROLL HP TIDAK KEPOTONG ===
-           Override terakhir. Logic MQTT tidak diubah. */
-        @media (max-width: 767px) {
-            html, body {
-                height: auto !important;
-                min-height: 100% !important;
-                overflow-x: hidden !important;
-                overflow-y: auto !important;
-            }
+/* ===== FIX MOBILE GITHUB PAGES: warna konsisten + scroll aman ===== */
+html, body {
+    margin: 0;
+    background: #111827;
+    color: #e5e7eb;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
 
-            body {
-                display: block !important;
-                min-height: 100dvh !important;
-                padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
-            }
+body {
+    background: #111827 !important;
+}
 
-            main {
-                height: auto !important;
-                min-height: 100dvh !important;
-                overflow: visible !important;
-            }
+button, input, select {
+    font-family: inherit;
+}
 
-            main > div:first-child {
-                position: sticky !important;
-                top: 0 !important;
-                height: 64px !important;
-                min-height: 64px !important;
-            }
+button {
+    cursor: pointer;
+}
 
-            main > div:last-child {
-                height: auto !important;
-                min-height: calc(100dvh - 64px) !important;
-                overflow: visible !important;
-                padding-bottom: calc(180px + env(safe-area-inset-bottom)) !important;
-            }
+/* fallback warna utama bila Tailwind CDN terlambat/gagal */
+.bg-gray-900 { background-color: #111827 !important; }
+.bg-gray-800 { background-color: #1f2937 !important; }
+.bg-gray-700 { background-color: #374151 !important; }
+.bg-blue-600 { background-color: #2563eb !important; }
+.bg-blue-500 { background-color: #3b82f6 !important; }
+.text-white { color: #ffffff !important; }
+.text-gray-200 { color: #e5e7eb !important; }
+.text-gray-400 { color: #9ca3af !important; }
+.text-gray-500 { color: #6b7280 !important; }
+.text-blue-400 { color: #60a5fa !important; }
+.text-blue-500 { color: #3b82f6 !important; }
+.text-green-400 { color: #4ade80 !important; }
+.border-gray-700 { border-color: #374151 !important; }
 
-            .tab-content {
-                height: auto !important;
-                min-height: auto !important;
-                padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
-            }
+/* layout dasar bila utility Tailwind tidak kebaca */
+.tab-content { display: none; }
+.tab-content.active { display: flex !important; }
 
-            .tab-content.active {
-                display: flex !important;
-            }
+main {
+    background: #111827;
+}
 
-            #tab-history .bg-gray-800,
-            #tab-history canvas {
-                margin-bottom: 110px !important;
-            }
+/* card umum */
+.bg-gray-800.rounded-3xl,
+section#tab-kontrol > div > div,
+section#tab-history .bg-gray-800,
+section#tab-referensi .bg-gray-800 {
+    background: #1f2937 !important;
+    border: 1px solid #374151 !important;
+    border-radius: 1.5rem !important;
+    box-shadow: 0 18px 35px rgba(0,0,0,.22) !important;
+}
 
-            nav.fixed {
-                height: calc(76px + env(safe-area-inset-bottom)) !important;
-                padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
-            }
-        }
+/* input, select, tombol preset */
+input, select {
+    background: #111827 !important;
+    color: #ffffff !important;
+    border: 1px solid #374151 !important;
+    border-radius: 1rem !important;
+    outline: none !important;
+    box-sizing: border-box !important;
+}
+
+input::placeholder { color: #9ca3af !important; }
+
+section#tab-kontrol button {
+    color: #ffffff !important;
+}
+
+section#tab-kontrol .space-y-4 > button {
+    display: block !important;
+    width: 100% !important;
+    background: #111827 !important;
+    border: 1px solid #374151 !important;
+    border-radius: 1rem !important;
+    padding: 1.25rem !important;
+    text-align: left !important;
+    margin-bottom: 1rem !important;
+}
+
+section#tab-kontrol button.bg-blue-600,
+section#tab-kontrol button[onclick="kirimPakan('custom')"] {
+    display: block !important;
+    width: 100% !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-radius: 1rem !important;
+    padding: 1.25rem !important;
+    text-align: center !important;
+    font-weight: 900 !important;
+    font-size: 1rem !important;
+}
+
+/* tabel */
+table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    color: #e5e7eb !important;
+}
+th, td {
+    padding: 1rem !important;
+    border-bottom: 1px solid rgba(55,65,81,.65) !important;
+}
+th {
+    color: #9ca3af !important;
+    font-size: .7rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+}
+
+/* ===== MOBILE ONLY ===== */
+@media (max-width: 767px) {
+    html, body {
+        width: 100%;
+        min-height: 100dvh;
+        height: auto !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        background: #111827 !important;
+    }
+
+    body {
+        display: block !important;
+        padding: 0 !important;
+    }
+
+    aside {
+        display: none !important;
+    }
+
+    main {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow: visible !important;
+        background: #111827 !important;
+    }
+
+    main > div:first-child {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        height: 64px !important;
+        padding: 0 24px !important;
+        background: #1f2937 !important;
+        border-bottom: 1px solid #374151 !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 40 !important;
+    }
+
+    main > div:first-child h1 {
+        color: #ffffff !important;
+        font-size: 1.125rem !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
+    }
+
+    main > div:nth-child(2) {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        padding: 28px 16px 96px 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    .tab-content {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        gap: 28px !important;
+    }
+
+    .tab-content:not(.active) {
+        display: none !important;
+    }
+
+    .tab-content.active {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    section h2 {
+        color: #ffffff !important;
+        font-size: 2rem !important;
+        line-height: 1.15 !important;
+        font-weight: 900 !important;
+        margin: 0 0 22px 0 !important;
+    }
+
+    /* grid jadi satu kolom mobile */
+    .grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 22px !important;
+    }
+
+    /* card mobile */
+    .bg-gray-800.p-10,
+    .bg-gray-800.p-8,
+    .bg-gray-800.p-6,
+    section#tab-referensi .bg-gray-800,
+    section#tab-history .bg-gray-800 {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        border-radius: 1.5rem !important;
+        padding: 2rem !important;
+        margin: 0 !important;
+    }
+
+    h3 {
+        color: #9ca3af !important;
+        font-size: .9rem !important;
+        letter-spacing: .12em !important;
+        text-transform: uppercase !important;
+        font-weight: 900 !important;
+    }
+
+    /* lingkaran kapasitas */
+    #tab-live .relative.w-48.h-48 {
+        width: 12rem !important;
+        height: 12rem !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+    }
+
+    #tab-live svg {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    #persenPakan {
+        position: absolute !important;
+        inset: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #ffffff !important;
+        font-size: 3rem !important;
+        font-weight: 900 !important;
+    }
+
+    /* status perangkat */
+    #tab-live .grid.grid-cols-2,
+    #tab-kontrol .grid.grid-cols-2 {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+    }
+
+    #infoStepper,
+    #infoServo,
+    #infoStepperKontrol,
+    #infoServoKontrol {
+        color: #ffffff !important;
+        font-weight: 900 !important;
+        font-size: 1.1rem !important;
+    }
+
+    /* preset dan manual */
+    section#tab-kontrol .space-y-4 > button span:first-child {
+        color: #ffffff !important;
+        font-size: 1rem !important;
+        font-weight: 900 !important;
+    }
+
+    section#tab-kontrol .space-y-4 > button span:last-child {
+        background: rgba(30,64,175,.35) !important;
+        color: #60a5fa !important;
+        border: 1px solid #1e40af !important;
+        border-radius: 999px !important;
+        padding: .25rem .75rem !important;
+        font-size: .65rem !important;
+    }
+
+    input, select {
+        width: 100% !important;
+        min-height: 56px !important;
+        padding: 1rem !important;
+        font-size: 1rem !important;
+    }
+
+    #hintRpm {
+        background: rgba(17,24,39,.5) !important;
+        border: 1px solid #374151 !important;
+        border-radius: 1rem !important;
+        min-height: 56px !important;
+        padding: 1rem !important;
+        color: #60a5fa !important;
+        font-weight: 900 !important;
+        box-sizing: border-box !important;
+    }
+
+    label {
+        color: #6b7280 !important;
+        font-size: .7rem !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        margin-bottom: .5rem !important;
+        display: block !important;
+    }
+
+    /* history */
+    #tab-history .flex.flex-wrap {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+
+    #tab-history button {
+        color: #111827 !important;
+        background: #e5e7eb !important;
+        border-radius: .75rem !important;
+        padding: .75rem 1rem !important;
+        font-weight: 800 !important;
+    }
+
+    #btnFilter-hari.bg-blue-600,
+    #tab-history button.bg-blue-600 {
+        background: #2563eb !important;
+        color: #ffffff !important;
+    }
+
+    #grafikPakan {
+        width: 100% !important;
+        max-height: 320px !important;
+    }
+
+    /* bottom nav mobile */
+    nav.md\:hidden,
+    body > nav {
+        display: flex !important;
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        height: calc(76px + env(safe-area-inset-bottom)) !important;
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom)) 12px !important;
+        background: #1f2937 !important;
+        border-top: 1px solid #374151 !important;
+        align-items: center !important;
+        justify-content: space-around !important;
+        z-index: 80 !important;
+        box-sizing: border-box !important;
+    }
+
+    nav.md\:hidden button,
+    body > nav button {
+        background: transparent !important;
+        border: none !important;
+        color: #9ca3af !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 2px !important;
+        font-weight: 800 !important;
+        font-size: .7rem !important;
+    }
+
+    nav.md\:hidden button.text-blue-500,
+    body > nav button.text-blue-500 {
+        color: #3b82f6 !important;
+    }
+
+    /* jangan scroll terlalu jauh, cukup sampai konten terakhir terlihat */
+    .tab-content.active > *:last-child {
+        margin-bottom: 8px !important;
+    }
+}
+
+@media (min-width: 768px) {
+    body {
+        height: 100vh !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: row !important;
+    }
+
+    aside {
+        display: flex !important;
+    }
+
+    main > div:first-child {
+        display: none !important;
+    }
+}
 
     </style>
 </head>
