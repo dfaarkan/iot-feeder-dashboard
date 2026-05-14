@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Feeder Dashboard - NTP System</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+        
+        .tab-content { display: none; width: 100%; height: 100%; flex-direction: column; }
+        .tab-content.active { display: flex; animation: fadeIn 0.3s ease-in-out; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .table-row-hover:hover { background-color: rgba(55, 65, 81, 0.5); transition: all 0.2s; }
+        
+        @media (max-width: 767px) {
+            .main-container { height: calc(100vh - 80px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans h-screen overflow-hidden flex flex-col md:flex-row">
+
+    <aside class="hidden md:flex w-72 bg-gray-800 border-r border-gray-700 flex-col justify-between shadow-2xl z-20">
+        <div>
+            <div class="h-24 flex items-center px-8 border-b border-gray-700">
+                <h1 class="text-2xl font-bold tracking-tight text-white"><span class="text-blue-500">IoT</span> Feeder</h1>
+            </div>
+            <nav class="p-4 space-y-3 mt-4">
+                <button onclick="bukaTab('tab-live')" id="btn-live-pc" class="nav-pc-btn active w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all bg-blue-600 text-white shadow-lg"><span>📊 Live Monitoring</span></button>
+                <button onclick="bukaTab('tab-kontrol')" id="btn-kontrol-pc" class="nav-pc-btn w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all text-gray-400 hover:text-white hover:bg-gray-700"><span>🎛️ Kontrol Aktuator</span></button>
+                <button onclick="bukaTab('tab-referensi')" id="btn-referensi-pc" class="nav-pc-btn w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all text-gray-400 hover:text-white hover:bg-gray-700"><span>📑 Data Referensi</span></button>
+                <button onclick="bukaTab('tab-history')" id="btn-history-pc" class="nav-pc-btn w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all text-gray-400 hover:text-white hover:bg-gray-700"><span>📈 Riwayat Pakan</span></button>
+            </nav>
+        </div>
+        <div class="p-6 border-t border-gray-700 bg-gray-900/50">
+            <div class="flex items-center gap-3">
+                <div id="statusKoneksiDot" class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                <span id="statusKoneksiTeks" class="text-xs font-bold text-gray-400">MQTT Offline</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative overflow-hidden main-container">
+        <div class="md:hidden flex items-center justify-between px-6 h-16 bg-gray-800 border-b border-gray-700">
+            <h1 class="font-bold text-white text-lg">IoT Feeder</h1>
+            <div id="statusKoneksiMob" class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-10">
+
+            <section id="tab-live" class="tab-content active gap-8">
+                <h2 class="text-3xl font-extrabold text-white">Live Monitoring</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-gray-800 p-10 rounded-3xl border border-gray-700 shadow-2xl flex flex-col items-center justify-center">
+                        <h3 class="text-gray-400 text-xs font-black tracking-widest uppercase mb-8">Kapasitas Wadah</h3>
+                        <div class="relative w-48 h-48 flex items-center justify-center">
+                            <svg class="transform -rotate-90 w-full h-full"><circle cx="50%" cy="50%" r="42%" stroke="currentColor" stroke-width="16" fill="transparent" class="text-gray-700" /><circle id="lingkaranPersen" cx="50%" cy="50%" r="42%" stroke="currentColor" stroke-width="16" fill="transparent" stroke-dasharray="264" stroke-dashoffset="264" class="text-blue-500 transition-all duration-1000 ease-out" stroke-linecap="round" /></svg>
+                            <span id="persenPakan" class="absolute text-5xl font-black text-white">0%</span>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 space-y-8">
+                        <div class="bg-gray-800 p-8 rounded-3xl border border-gray-700 shadow-2xl">
+                            <h3 class="text-gray-400 text-xs font-black tracking-widest uppercase mb-6 text-blue-400">Status Perangkat</h3>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div class="bg-gray-900/80 p-6 rounded-2xl border border-gray-700"><p class="text-[10px] text-gray-500 uppercase mb-2">Stepper</p><p id="infoStepper" class="text-xl font-black text-white">-- RPM</p></div>
+                                <div class="bg-gray-900/80 p-6 rounded-2xl border border-gray-700"><p class="text-[10px] text-gray-500 uppercase mb-2">Servo</p><p id="infoServo" class="text-xl font-black text-white">--</p></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-800 p-8 rounded-3xl border border-gray-700 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div><h3 class="text-gray-400 text-xs font-black tracking-widest uppercase mb-2 text-green-400">Laporan Terakhir (NTP)</h3><p id="waktuTerakhir" class="text-xl font-bold text-white">Menunggu data...</p></div>
+                            <div class="bg-gray-900 px-8 py-4 rounded-2xl border border-gray-700 text-center"><p class="text-[10px] text-gray-500 uppercase font-black">Massa Keluar</p><p id="estimasiPakanTerakhir" class="text-3xl font-black text-white">-- g</p></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-kontrol" class="tab-content gap-8">
+                <h2 class="text-3xl font-extrabold text-white">Kontrol Sistem</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-gray-800 p-8 rounded-3xl border border-gray-700 shadow-2xl space-y-4">
+                        <h3 class="text-gray-400 text-xs font-black tracking-widest uppercase mb-4">Preset Gramasi Pakan</h3>
+                        <button onclick="kirimPakan('preset', 150, 1000, 2, 1.5)" class="w-full bg-gray-900 hover:bg-gray-700 border border-gray-700 p-5 rounded-2xl text-left transition-all group">
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-black group-hover:text-blue-400">Mode A: ± 60g</span>
+                                <span class="bg-blue-900/30 text-blue-400 text-[10px] px-3 py-1 rounded-full border border-blue-800">Servo 1"</span>
+                            </div>
+                        </button>
+                        <button onclick="kirimPakan('preset', 125, 1200, 2, 2.88)" class="w-full bg-gray-900 hover:bg-gray-700 border border-gray-700 p-5 rounded-2xl text-left transition-all group">
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-black group-hover:text-blue-400">Mode B: ± 125g</span>
+                                <span class="bg-blue-900/30 text-blue-400 text-[10px] px-3 py-1 rounded-full border border-blue-800">Servo 1"</span>
+                            </div>
+                        </button>
+                        <button onclick="kirimPakan('preset', 100, 1500, 2, 3.6)" class="w-full bg-gray-900 hover:bg-gray-700 border border-gray-700 p-5 rounded-2xl text-left transition-all group">
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-black group-hover:text-blue-400">Mode C: ± 180g</span>
+                                <span class="bg-blue-900/30 text-blue-400 text-[10px] px-3 py-1 rounded-full border border-blue-800">Servo 1"</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="bg-gray-800 p-8 rounded-3xl border border-gray-700 shadow-2xl space-y-8">
+                        <h3 class="text-gray-400 text-xs font-black tracking-widest uppercase">Input Manual Eksperimen</h3>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div><label class="text-[10px] font-black text-gray-500 uppercase block mb-2">Delay Stepper (µS)</label><input type="number" id="inputDelay" oninput="hitungRpmManual(this.value)" placeholder="1000" class="w-full bg-gray-900 border border-gray-700 rounded-2xl p-5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"></div>
+                            <div><label class="text-[10px] font-black text-gray-500 uppercase block mb-2">Konversi RPM</label><div id="hintRpm" class="w-full bg-gray-900/50 border border-gray-700 rounded-2xl p-5 text-blue-400 font-mono text-xl font-black">0</div></div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-gray-500 uppercase block mb-2">Pilih Bukaan Servo</label>
+                            <select id="inputServo" class="w-full bg-gray-900 border border-gray-700 rounded-2xl p-5 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer">
+                                <option value="2">1 inch - Bukaan Kecil (Mode 2)</option>
+                                <option value="1">1.25 inch - Bukaan Besar (Mode 1)</option>
+                                <option value="0">Tutup Saluran (Mode 0)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-gray-500 uppercase block mb-2">Waktu Buka Servo (Detik)</label>
+                            <input type="number" id="inputDetik" step="0.1" placeholder="Contoh: 2.4" class="w-full bg-gray-900 border border-gray-700 rounded-2xl p-5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        </div>
+                        <button onclick="kirimPakan('custom')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg">🚀 EKSEKUSI PEMBERIAN PAKAN</button>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-2xl mt-auto">
+                    <div class="flex items-center justify-between">
+                        <div><p class="text-xs text-gray-500 uppercase font-black">Status Perintah Terakhir</p><p class="text-sm mt-1 text-white">Waktu Kirim: <span id="waktuTerakhirKontrol" class="text-green-400 font-bold">Belum ada data</span></p></div>
+                        <div class="flex gap-4">
+                            <div class="bg-gray-900 px-6 py-2 rounded-xl border border-gray-700 text-right"><p id="infoStepperKontrol" class="text-sm font-black text-white">-- RPM</p></div>
+                            <div class="bg-gray-900 px-6 py-2 rounded-xl border border-gray-700 text-right"><p id="infoServoKontrol" class="text-sm font-black text-white">--</p></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-referensi" class="tab-content gap-8">
+                <h2 class="text-3xl font-extrabold text-white">Data Referensi Kalibrasi</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-2xl h-max">
+                        <div class="bg-gray-900 p-5 border-b border-gray-700 flex justify-between items-center"><h3 class="font-black text-blue-400 tracking-wider">SERVO 1" (BUKAAN KECIL)</h3><span class="text-[10px] text-blue-400">Mode 2</span></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-800 text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-gray-700">
+                                    <tr><th class="p-5">Stepper (Delay)</th><th class="p-5">Waktu Buka</th><th class="p-5 text-right">Massa Rata-rata</th></tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-700/50">
+                                    <tr class="table-row-hover text-gray-200"><td class="p-5">150 RPM (1000µs)</td><td class="p-5">1.5 s</td><td class="p-5 text-right font-black">62.72 g</td></tr>
+                                    <tr class="table-row-hover text-gray-200"><td class="p-5">150 RPM (1000µs)</td><td class="p-5">2.0 s</td><td class="p-5 text-right font-black">85.52 g</td></tr>
+                                    <tr class="table-row-hover text-gray-200"><td class="p-5">150 RPM (1000µs)</td><td class="p-5">2.4 s</td><td class="p-5 text-right font-black">105.70 g</td></tr>
+                                    <tr class="table-row-hover text-blue-400"><td class="p-5 font-bold">125 RPM (1200µs)</td><td class="p-5">2.5 s</td><td class="p-5 text-right font-black">110.44 g</td></tr>
+                                    <tr class="table-row-hover text-blue-400"><td class="p-5 font-bold">125 RPM (1200µs)</td><td class="p-5">2.88 s</td><td class="p-5 text-right font-black">132.74 g</td></tr>
+                                    <tr class="table-row-hover text-emerald-400"><td class="p-5 font-bold">100 RPM (1500µs)</td><td class="p-5">2.0 s</td><td class="p-5 text-right font-black">81.76 g</td></tr>
+                                    <tr class="table-row-hover text-emerald-400"><td class="p-5 font-bold">100 RPM (1500µs)</td><td class="p-5">3.0 s</td><td class="p-5 text-right font-black">133.84 g</td></tr>
+                                    <tr class="table-row-hover text-emerald-400"><td class="p-5 font-bold">100 RPM (1500µs)</td><td class="p-5">3.6 s</td><td class="p-5 text-right font-black">179.64 g</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-2xl h-max">
+                        <div class="bg-gray-900 p-5 border-b border-gray-700 flex justify-between items-center"><h3 class="font-black text-green-400 tracking-wider">SERVO 1.25" (BUKAAN BESAR)</h3><span class="text-[10px] text-green-400">Mode 1</span></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-800 text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-gray-700">
+                                    <tr><th class="p-5">Stepper (Delay)</th><th class="p-5">Waktu Buka</th><th class="p-5 text-right">Massa Rata-rata</th></tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-700/50">
+                                    <tr class="table-row-hover text-gray-200"><td class="p-5">150 RPM (1000µs)</td><td class="p-5">1.5 s</td><td class="p-5 text-right font-black">138.44 g</td></tr>
+                                    <tr class="table-row-hover text-gray-200"><td class="p-5">150 RPM (1000µs)</td><td class="p-5">2.0 s</td><td class="p-5 text-right font-black">192.14 g</td></tr>
+                                    <tr class="table-row-hover text-gray-200"><td class="p-5">150 RPM (1000µs)</td><td class="p-5">2.4 s</td><td class="p-5 text-right font-black">240.06 g</td></tr>
+                                    <tr class="table-row-hover text-blue-400"><td class="p-5 font-bold">125 RPM (1200µs)</td><td class="p-5">2.5 s</td><td class="p-5 text-right font-black">248.66 g</td></tr>
+                                    <tr class="table-row-hover text-blue-400"><td class="p-5 font-bold">125 RPM (1200µs)</td><td class="p-5">2.88 s</td><td class="p-5 text-right font-black">284.96 g</td></tr>
+                                    <tr class="table-row-hover text-emerald-400"><td class="p-5 font-bold">100 RPM (1500µs)</td><td class="p-5">2.0 s</td><td class="p-5 text-right font-black">189.06 g</td></tr>
+                                    <tr class="table-row-hover text-emerald-400"><td class="p-5 font-bold">100 RPM (1500µs)</td><td class="p-5">3.0 s</td><td class="p-5 text-right font-black">298.84 g</td></tr>
+                                    <tr class="table-row-hover text-emerald-400"><td class="p-5 font-bold">100 RPM (1500µs)</td><td class="p-5">3.6 s</td><td class="p-5 text-right font-black">306.92 g</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-history" class="tab-content gap-8">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div><h2 class="text-3xl font-extrabold text-white">Riwayat Pengeluaran</h2><p class="text-gray-500 text-sm mt-1 uppercase font-black">Sinkronisasi NTP (Real-time)</p></div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex bg-gray-800 p-1 rounded-xl border border-gray-700">
+                            <button id="btnFilter-hari" onclick="ubahFilterWaktu('hari')" class="px-4 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white shadow-lg transition-all">Hari Ini</button>
+                            <button id="btnFilter-minggu" onclick="ubahFilterWaktu('minggu')" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-all">7 Hari</button>
+                            <button id="btnFilter-bulan" onclick="ubahFilterWaktu('bulan')" class="px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-all">Bulan</button>
+                        </div>
+                        <div class="bg-blue-600 px-8 py-4 rounded-2xl shadow-xl border border-blue-500/50 text-center"><p class="text-[9px] text-blue-200 uppercase font-black tracking-tight">Total Terakumulasi</p><span id="labelTotalHarian" class="text-3xl font-black text-white">0 g</span></div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 md:p-10 rounded-3xl border border-gray-700 shadow-2xl flex-1 relative min-h-[400px]"><canvas id="grafikPakan"></canvas></div>
+            </section>
+        </div>
+    </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 h-20 flex justify-around items-center z-50 px-2">
+        <button onclick="bukaTab('tab-live')" id="mob-live" class="nav-mob-btn text-blue-500 flex flex-col items-center gap-1"><span>📊</span><span class="text-[10px] font-black uppercase">Live</span></button>
+        <button onclick="bukaTab('tab-kontrol')" id="mob-kontrol" class="nav-mob-btn text-gray-500 flex flex-col items-center gap-1"><span>🎛️</span><span class="text-[10px] font-black uppercase">Set</span></button>
+        <button onclick="bukaTab('tab-referensi')" id="mob-referensi" class="nav-mob-btn text-gray-500 flex flex-col items-center gap-1"><span>📑</span><span class="text-[10px] font-black uppercase">Data</span></button>
+        <button onclick="bukaTab('tab-history')" id="mob-history" class="nav-mob-btn text-gray-500 flex flex-col items-center gap-1"><span>📈</span><span class="text-[10px] font-black uppercase">Log</span></button>
+    </nav>
+
+    <script>
+        function bukaTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            document.querySelectorAll('.nav-pc-btn').forEach(b => b.className = "nav-pc-btn w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all text-gray-400 hover:text-white hover:bg-gray-700");
+            const pcBtn = document.getElementById('btn-' + id.split('-')[1] + '-pc');
+            if(pcBtn) pcBtn.className = "nav-pc-btn active w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all bg-blue-600 text-white shadow-lg";
+
+            document.querySelectorAll('.nav-mob-btn').forEach(b => b.className = "nav-mob-btn text-gray-500 flex flex-col items-center gap-1");
+            const mobBtn = document.getElementById('mob-' + id.split('-')[1]);
+            if(mobBtn) mobBtn.className = "nav-mob-btn text-blue-500 flex flex-col items-center gap-1";
+        }
+
+        const ctx = document.getElementById('grafikPakan').getContext('2d');
+        const grafikLevel = new Chart(ctx, { 
+            type: 'bar', 
+            data: { labels: [], datasets: [{ label: 'Gram', data: [], backgroundColor: '#3b82f6', borderRadius: 8 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#374151' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } 
+        });
+
+        let dataRealtimeLabels = [];
+        let dataRealtimeValues = [];
+        let totalHarian = 0;
+        let filterAktif = 'hari';
+
+        function ubahFilterWaktu(f) {
+            filterAktif = f;
+            const ids = ['hari', 'minggu', 'bulan'];
+            ids.forEach(id => {
+                document.getElementById('btnFilter-' + id).className = "px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-all";
+            });
+            document.getElementById('btnFilter-' + f).className = "px-4 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white shadow-lg transition-all";
+
+            if(f === 'hari') { 
+                grafikLevel.data.labels = dataRealtimeLabels; 
+                grafikLevel.data.datasets[0].data = dataRealtimeValues; 
+                document.getElementById("labelTotalHarian").innerText = totalHarian + " g"; 
+            }
+            else if (f === 'minggu') { 
+                grafikLevel.data.labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']; 
+                grafikLevel.data.datasets[0].data = [350, 420, 380, 510, 450, 600, 390]; 
+                document.getElementById("labelTotalHarian").innerText = "3.100 g"; 
+            }
+            else { 
+                grafikLevel.data.labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4']; 
+                grafikLevel.data.datasets[0].data = [2800, 3200, 2500, 3500]; 
+                document.getElementById("labelTotalHarian").innerText = "12.000 g"; 
+            }
+            grafikLevel.update();
+        }
+
+        const client = new Paho.MQTT.Client("broker.hivemq.com", 8000, "fdr_" + Math.random().toString(16).substr(2, 8));
+        
+        client.onMessageArrived = (msg) => {
+            if(msg.destinationName === "feeder/sensor/jarak") {
+                // Payload dari ESP32 sekarang sudah berupa persentase level pakan: 0, 25, 50, 75, 100
+                let p = parseInt(msg.payloadString);
+                if (isNaN(p)) p = 0;
+                p = Math.min(100, Math.max(0, p));
+                document.getElementById("persenPakan").innerText = p + "%";
+                document.getElementById("lingkaranPersen").style.strokeDashoffset = 264 - (264 * p / 100);
+            } 
+            else if(msg.destinationName === "feeder/status/riwayat") {
+                let g = parseFloat(msg.payloadString);
+                let t = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+                
+                totalHarian += g;
+                dataRealtimeLabels.push(t);
+                dataRealtimeValues.push(g);
+
+                if(filterAktif === 'hari') {
+                    document.getElementById("labelTotalHarian").innerText = totalHarian + " g";
+                    grafikLevel.data.labels = dataRealtimeLabels; 
+                    grafikLevel.data.datasets[0].data = dataRealtimeValues; 
+                    grafikLevel.update();
+                }
+                document.getElementById("estimasiPakanTerakhir").innerText = g + " g";
+                document.getElementById("waktuTerakhir").innerText = t;
+                document.getElementById("waktuTerakhirKontrol").innerText = new Date().toLocaleTimeString('id-ID');
+            }
+        };
+
+        client.connect({ onSuccess: () => { 
+            client.subscribe("feeder/sensor/jarak"); 
+            client.subscribe("feeder/status/riwayat");
+            document.getElementById("statusKoneksiDot").className = "w-3 h-3 rounded-full bg-green-500 animate-pulse";
+            document.getElementById("statusKoneksiTeks").innerText = "MQTT Online";
+            document.getElementById("statusKoneksiMob").className = "w-3 h-3 rounded-full bg-green-500 animate-pulse";
+        } });
+
+        function hitungRpmManual(d) { document.getElementById('hintRpm').innerText = d > 0 ? Math.round(150000 / d) : 0; }
+        
+        function kirimPakan(tipe, rpm=0, delay=0, servo=0, detik=0) {
+            let d;
+            if(tipe === 'preset') {
+                let mode = 'CUSTOM';
+                if (delay === 1000) mode = 'A';
+                else if (delay === 1200) mode = 'B';
+                else if (delay === 1500) mode = 'C';
+
+                d = { mode, rpm, delay, servo, detik };
+            } else {
+                let val = document.getElementById('inputDelay').value;
+                let det = document.getElementById('inputDetik').value;
+                if(!val || !det) return alert("Isi delay dan detik dulu!");
+                d = { 
+                    mode: 'MANUAL',
+                    rpm: Math.round(150000 / parseInt(val)),
+                    delay: parseInt(val),
+                    servo: parseInt(document.getElementById('inputServo').value),
+                    detik: parseFloat(det)
+                };
+            }
+
+            let msg = new Paho.MQTT.Message(JSON.stringify(d));
+            msg.destinationName = "feeder/kontrol/pakan";
+            client.send(msg);
+
+            document.getElementById("infoStepper").innerText = d.rpm + " RPM";
+            document.getElementById("infoServo").innerText = d.servo == 1 ? "Besar" : (d.servo == 2 ? "Kecil" : "Tutup");
+            document.getElementById("infoStepperKontrol").innerText = d.rpm + " RPM";
+            document.getElementById("infoServoKontrol").innerText = d.servo == 1 ? "Besar" : (d.servo == 2 ? "Kecil" : "Tutup");
+        }
+    </script>
+</body>
+</html>
