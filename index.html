@@ -259,7 +259,12 @@
             grafikLevel.update();
         }
 
-        const client = new Paho.MQTT.Client("broker.emqx.io", 8083, "fdr_" + Math.random().toString(16).substr(2, 8));
+        const client = new Paho.MQTT.Client(
+            "broker.emqx.io",
+            8084,
+            "/mqtt",
+            "fdr_" + Math.random().toString(16).substr(2, 8)
+        );
         
         client.onMessageArrived = (msg) => {
             if(msg.destinationName === "feeder/sensor/jarak") {
@@ -290,13 +295,21 @@
             }
         };
 
-        client.connect({ onSuccess: () => { 
+        client.connect({
+            useSSL: true,
+            onSuccess: () => { 
             client.subscribe("feeder/sensor/jarak"); 
             client.subscribe("feeder/status/riwayat");
-            document.getElementById("statusKoneksiDot").className = "w-3 h-3 rounded-full bg-green-500 animate-pulse";
+
+             document.getElementById("statusKoneksiDot").className = "w-3 h-3 rounded-full bg-green-500 animate-pulse";
             document.getElementById("statusKoneksiTeks").innerText = "MQTT Online";
             document.getElementById("statusKoneksiMob").className = "w-3 h-3 rounded-full bg-green-500 animate-pulse";
-        } });
+        },
+        onFailure: (err) => {
+            console.log("MQTT gagal connect:", err);
+            alert("MQTT dashboard gagal connect. Cek console browser.");
+        }
+    });
 
         function hitungRpmManual(d) { document.getElementById('hintRpm').innerText = d > 0 ? Math.round(150000 / d) : 0; }
         
