@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IoT Feeder Dashboard - NTP System</title>
     
-    <link rel="icon" type="image/png" href="Logo-IPB.png">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -546,9 +544,58 @@
             .p-10, .p-8, .p-6 { box-sizing: border-box !important; }
         }
 
+
+
+        /* CLICK FEEDBACK + BUSY POPUP */
+        .btn-pressing {
+            transform: scale(0.97) !important;
+            filter: brightness(1.15) !important;
+            transition: transform 0.12s ease, filter 0.12s ease !important;
+        }
+        .feed-disabled {
+            opacity: 0.55 !important;
+            pointer-events: none !important;
+            cursor: not-allowed !important;
+            filter: grayscale(0.25) !important;
+        }
+        .busy-toast {
+            position: fixed;
+            left: 50%;
+            top: 18px;
+            transform: translateX(-50%) translateY(-12px);
+            z-index: 9999;
+            min-width: 260px;
+            max-width: calc(100vw - 32px);
+            padding: 14px 18px;
+            border-radius: 18px;
+            background: rgba(17, 24, 39, 0.96);
+            color: #ffffff;
+            border: 1px solid rgba(59, 130, 246, 0.45);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+            font-weight: 800;
+            font-size: 14px;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease;
+        }
+        .busy-toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        .busy-toast small {
+            display: block;
+            margin-top: 4px;
+            color: #9ca3af;
+            font-weight: 600;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 font-sans h-screen overflow-hidden flex flex-col md:flex-row">
+
+    <div id="busyToast" class="busy-toast">⏳ Alat sedang bekerja<small>Tunggu sampai proses selesai</small></div>
 
     <aside class="hidden md:flex w-72 bg-gray-800 border-r border-gray-700 flex-col justify-between shadow-2xl z-20">
         <div>
@@ -815,6 +862,9 @@
                 document.getElementById("estimasiPakanTerakhir").innerText = g + " g";
                 document.getElementById("waktuTerakhir").innerText = t;
                 document.getElementById("waktuTerakhirKontrol").innerText = new Date().toLocaleTimeString('id-ID');
+
+                // Jika riwayat sudah masuk, berarti siklus pemberian pakan sudah selesai.
+                setAlatBekerja(false);
             }
         };
 
@@ -834,9 +884,61 @@
         }
     });
 
-        function hitungRpmManual(d) { document.getElementById('hintRpm').innerText = d > 0 ? Math.round(150000 / d) : 0; }
+        let alatSedangBekerja = false;
+        let timerBukaKunci = null;
+
+        function hitungRpmManual(d) {
+            document.getElementById('hintRpm').innerText = d > 0 ? Math.round(150000 / d) : 0;
+        }
+
+        function tampilkanToast(teksUtama = "⏳ Alat sedang bekerja", teksKecil = "Tunggu sampai proses selesai") {
+            const toast = document.getElementById('busyToast');
+            if (!toast) return;
+            toast.innerHTML = teksUtama + `<small>${teksKecil}</small>`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2600);
+        }
+
+        function animasiKlik(target) {
+            if (!target) return;
+            target.classList.add('btn-pressing');
+            setTimeout(() => target.classList.remove('btn-pressing'), 160);
+        }
+
+        function setAlatBekerja(status) {
+            alatSedangBekerja = status;
+
+            document.querySelectorAll('button[onclick^="kirimPakan"]').forEach(btn => {
+                if (status) btn.classList.add('feed-disabled');
+                else btn.classList.remove('feed-disabled');
+            });
+
+            const inputDelay = document.getElementById('inputDelay');
+            const inputServo = document.getElementById('inputServo');
+            const inputDetik = document.getElementById('inputDetik');
+            [inputDelay, inputServo, inputDetik].forEach(el => {
+                if (el) el.disabled = status;
+            });
+
+            if (!status && timerBukaKunci) {
+                clearTimeout(timerBukaKunci);
+                timerBukaKunci = null;
+            }
+        }
         
         function kirimPakan(tipe, rpm=0, delay=0, servo=0, detik=0) {
+            animasiKlik(event?.currentTarget);
+
+            if (alatSedangBekerja) {
+                tampilkanToast("⚠️ Alat masih bekerja", "Perintah baru ditolak agar timing belt aman");
+                return;
+            }
+
+            if (!client.isConnected()) {
+                tampilkanToast("MQTT belum tersambung", "Tunggu status MQTT Online");
+                return;
+            }
+
             let d;
             if(tipe === 'preset') {
                 let mode = 'CUSTOM';
@@ -858,9 +960,19 @@
                 };
             }
 
+            setAlatBekerja(true);
+            tampilkanToast("⏳ Alat sedang bekerja", "Tombol dikunci sementara");
+
             let msg = new Paho.MQTT.Message(JSON.stringify(d));
             msg.destinationName = "feeder/kontrol/pakan";
             client.send(msg);
+
+            // Pengaman: jika MQTT riwayat tidak diterima, tombol akan aktif lagi otomatis.
+            // 18 detik cukup untuk siklus maju + balik + jeda pada mode paling lambat.
+            timerBukaKunci = setTimeout(() => {
+                setAlatBekerja(false);
+                tampilkanToast("✅ Tombol aktif kembali", "Jika alat masih bergerak, tunggu secara manual sebelum klik lagi");
+            }, 18000);
 
             document.getElementById("infoStepper").innerText = d.rpm + " RPM";
             document.getElementById("infoServo").innerText = d.servo == 1 ? "Besar" : (d.servo == 2 ? "Kecil" : "Tutup");
