@@ -259,7 +259,7 @@
             grafikLevel.update();
         }
 
-        const client = new Paho.MQTT.Client("broker.hivemq.com", 8000, "fdr_" + Math.random().toString(16).substr(2, 8));
+        const client = new Paho.MQTT.Client("broker.emqx.io", 8083, "fdr_" + Math.random().toString(16).substr(2, 8));
         
         client.onMessageArrived = (msg) => {
             if(msg.destinationName === "feeder/sensor/jarak") {
